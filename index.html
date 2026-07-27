@@ -1,0 +1,773 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>צוללות אונליין</title>
+<style>
+  :root{
+    --sea:#07131f;
+    --panel:#0c1e30;
+    --panel2:#0f2740;
+    --grid:#1d4360;
+    --glow:#37c8e8;
+    --glow-dim:#1e7d99;
+    --hit:#ff5a3c;
+    --miss:#5d7a8f;
+    --ship:#2f5d80;
+    --text:#d7ecf5;
+    --sub:#8fb2c4;
+    --ok:#4ade80;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{min-height:100%}
+  body{
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #0e2a42 0%, transparent 60%),
+      var(--sea);
+    color:var(--text);
+    font-family:-apple-system,"Segoe UI",Roboto,"Heebo",Arial,sans-serif;
+    direction:rtl;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:20px 12px 40px;
+  }
+  h1{
+    font-size:clamp(26px,5vw,40px);
+    letter-spacing:.12em;
+    font-weight:800;
+    color:var(--glow);
+    text-shadow:0 0 18px rgba(55,200,232,.45);
+    margin-bottom:2px;
+  }
+  .tagline{color:var(--sub);font-size:13px;letter-spacing:.28em;margin-bottom:22px}
+  .screen{display:none;width:100%;max-width:920px;flex-direction:column;align-items:center}
+  .screen.active{display:flex}
+
+  .card{
+    background:linear-gradient(180deg,var(--panel2),var(--panel));
+    border:1px solid var(--grid);
+    border-radius:var(--radius);
+    padding:26px 28px;
+    width:100%;
+    max-width:440px;
+    box-shadow:0 8px 40px rgba(0,0,0,.45);
+  }
+  .card h2{font-size:20px;margin-bottom:14px;color:var(--glow)}
+  label{display:block;font-size:13px;color:var(--sub);margin:12px 0 4px}
+  input[type=text]{
+    width:100%;padding:10px 12px;border-radius:8px;
+    border:1px solid var(--grid);background:#081827;color:var(--text);
+    font-size:16px;font-family:inherit;
+  }
+  input[type=text]:focus{outline:2px solid var(--glow-dim);border-color:var(--glow-dim)}
+  input.code{
+    text-align:center;letter-spacing:.4em;font-size:22px;font-weight:700;
+    text-transform:uppercase;direction:ltr;
+  }
+
+  button{
+    font-family:inherit;cursor:pointer;border:none;border-radius:8px;
+    padding:11px 22px;font-size:15px;font-weight:700;
+    background:var(--glow);color:#04121c;
+    transition:transform .08s, box-shadow .15s;
+  }
+  button:hover{box-shadow:0 0 16px rgba(55,200,232,.5)}
+  button:active{transform:scale(.97)}
+  button.ghost{
+    background:transparent;color:var(--glow);
+    border:1px solid var(--glow-dim);
+  }
+  button:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}
+  button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+  .btnrow{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;justify-content:center}
+  .divider{display:flex;align-items:center;gap:12px;margin:20px 0;color:var(--sub);font-size:13px}
+  .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--grid)}
+
+  /* lobby */
+  .lobby{text-align:center}
+  .roomcode{
+    font-size:44px;font-weight:800;letter-spacing:.3em;color:var(--glow);
+    text-shadow:0 0 20px rgba(55,200,232,.5);
+    direction:ltr;margin:14px 0 4px;font-variant-numeric:tabular-nums;
+  }
+  .waiting{color:var(--sub);margin-top:16px;font-size:15px}
+  @media (prefers-reduced-motion: no-preference){
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+    .waiting{animation:pulse 2s ease-in-out infinite}
+    .turnname.mine{animation:pulse 2.4s ease-in-out infinite}
+  }
+
+  /* boards */
+  .boardwrap{display:flex;flex-direction:column;align-items:center;gap:6px}
+  .boardtitle{font-size:13px;letter-spacing:.2em;color:var(--sub)}
+  table.board{border-collapse:collapse;user-select:none}
+  table.board td,table.board th{
+    width:min(8.4vw,34px);height:min(8.4vw,34px);
+    text-align:center;vertical-align:middle;
+  }
+  table.board th{
+    font-size:11px;color:var(--glow-dim);font-weight:600;
+    font-variant-numeric:tabular-nums;
+  }
+  td.cell{
+    border:1px solid var(--grid);
+    background:
+      radial-gradient(circle at 50% 50%, rgba(55,200,232,.06), transparent 70%),
+      #0a1c2d;
+    position:relative;
+    cursor:pointer;
+    transition:background .1s;
+  }
+  td.cell.noclick{cursor:default}
+  td.cell:hover{background:#123049}
+  td.cell.ship{background:var(--ship);border-color:#3c729c}
+  td.cell.preview-ok{background:var(--glow-dim);border-color:var(--glow)}
+  td.cell.preview-bad{background:#7a2d22;border-color:var(--hit)}
+  td.cell.miss::after{
+    content:"";position:absolute;inset:34%;border-radius:50%;
+    background:var(--miss);
+  }
+  td.cell.hit{background:#421c14;border-color:var(--hit)}
+  td.cell.hit::after{
+    content:"✕";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    color:var(--hit);font-weight:900;font-size:18px;text-shadow:0 0 8px rgba(255,90,60,.7);
+  }
+  td.cell.sunkcell{background:#5a170c;border-color:var(--hit)}
+
+  .placewrap{display:flex;flex-direction:column;align-items:center;gap:14px;width:100%}
+  .fleetlist{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+  .fleetchip{
+    display:flex;align-items:center;gap:6px;
+    padding:6px 12px;border-radius:20px;font-size:13px;
+    border:1px solid var(--grid);color:var(--sub);background:var(--panel);
+  }
+  .fleetchip.current{border-color:var(--glow);color:var(--glow);box-shadow:0 0 10px rgba(55,200,232,.3)}
+  .fleetchip.done{opacity:.45;text-decoration:line-through}
+  .fleetchip .squares{display:flex;gap:2px}
+  .fleetchip .sq{width:9px;height:9px;background:var(--ship);border-radius:2px}
+  .fleetchip.current .sq{background:var(--glow)}
+  .hint{color:var(--sub);font-size:13px;text-align:center;max-width:420px}
+
+  /* battle */
+  .battle{display:flex;flex-direction:column;align-items:center;gap:18px;width:100%}
+  .statusbar{font-size:16px;text-align:center}
+  .turnname{font-weight:800;font-size:19px;color:var(--sub)}
+  .turnname.mine{color:var(--glow)}
+  .msg{min-height:24px;font-size:16px;text-align:center}
+  .msg.good{color:var(--ok)}
+  .msg.bad{color:var(--hit)}
+  .grids{display:flex;gap:34px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+  .minifleet{display:flex;gap:10px;font-size:12px;color:var(--sub);flex-wrap:wrap;justify-content:center;max-width:380px}
+  .minifleet span.sunk{color:var(--hit);text-decoration:line-through}
+
+  .endcard{text-align:center;padding:50px 30px}
+  .endcard .emoji{font-size:56px;margin-bottom:10px}
+  .endcard .who{font-size:30px;font-weight:800;color:var(--glow);margin-bottom:6px}
+  .endcard p{color:var(--sub);margin-bottom:24px}
+</style>
+
+<h1>צוללות אונליין</h1>
+<div class="tagline">BATTLESHIP · NAVAL COMMAND</div>
+
+<!-- HOME -->
+<div class="screen active" id="scr-home">
+  <div class="card">
+    <h2>שחקו עם חבר — כל אחד מהמכשיר שלו</h2>
+    <label for="myname">השם שלך</label>
+    <input type="text" id="myname" placeholder="איך קוראים לך?" maxlength="14">
+    <div class="btnrow">
+      <button id="btn-create">צור חדר חדש</button>
+    </div>
+    <div class="divider">או הצטרפו לחדר קיים</div>
+    <label for="joincode">קוד חדר</label>
+    <input type="text" id="joincode" class="code" placeholder="XXXX" maxlength="4" autocomplete="off">
+    <div class="btnrow">
+      <button class="ghost" id="btn-join">הצטרף לחדר</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOBBY -->
+<div class="screen" id="scr-lobby">
+  <div class="card lobby">
+    <h2>החדר מוכן!</h2>
+    <p class="hint">שלחו לחבר את הקוד או את הקישור:</p>
+    <div class="roomcode" id="lobby-code"></div>
+    <div class="btnrow">
+      <button class="ghost" id="btn-copylink">📋 העתק קישור הזמנה</button>
+    </div>
+    <div class="waiting">ממתין שהיריב יצטרף…</div>
+  </div>
+</div>
+
+<!-- PLACEMENT -->
+<div class="screen" id="scr-place">
+  <div class="placewrap">
+    <div class="turnname mine" id="place-title">הצבת הצי</div>
+    <div class="hint" id="place-hint">לחצו על הלוח כדי למקם את הספינה הנוכחית. «סיבוב» משנה כיוון.</div>
+    <div class="fleetlist" id="fleet-chips"></div>
+    <div class="boardwrap"><div id="place-board"></div></div>
+    <div class="btnrow" id="place-btns">
+      <button class="ghost" id="btn-rotate">↻ סיבוב (אופקי)</button>
+      <button class="ghost" id="btn-random">🎲 פיזור אקראי</button>
+      <button class="ghost" id="btn-clear">נקה לוח</button>
+      <button id="btn-ready" disabled>מוכן לקרב!</button>
+    </div>
+    <div class="waiting" id="place-wait" style="display:none">ממתין שהיריב יסיים להציב…</div>
+  </div>
+</div>
+
+<!-- BATTLE -->
+<div class="screen" id="scr-battle">
+  <div class="battle">
+    <div class="statusbar"><span class="turnname" id="turn-label"></span></div>
+    <div class="msg" id="battle-msg"></div>
+    <div class="grids">
+      <div class="boardwrap">
+        <div class="boardtitle">מכ״ם תקיפה — לחצו כדי לירות</div>
+        <div id="radar-board"></div>
+        <div class="minifleet" id="enemy-fleet-status"></div>
+      </div>
+      <div class="boardwrap">
+        <div class="boardtitle">הצי שלך</div>
+        <div id="own-board"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- END -->
+<div class="screen" id="scr-end">
+  <div class="card endcard">
+    <div class="emoji" id="end-emoji"></div>
+    <div class="who" id="end-title"></div>
+    <p id="end-sub"></p>
+    <button id="btn-again">משחק חדש</button>
+  </div>
+</div>
+
+<!-- ERROR -->
+<div class="screen" id="scr-error">
+  <div class="card endcard">
+    <div class="emoji">⚓</div>
+    <div class="who" id="err-title">שגיאה</div>
+    <p id="err-sub"></p>
+    <button id="btn-err-home">חזרה למסך הראשי</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+"use strict";
+var SB_URL = "https://oxkwmzbhamufgkdrlqso.supabase.co";
+var SB_KEY = "sb_publishable_KJrph6fven-MM8b7-A20oQ_5-XL0xR-";
+var sb = window.supabase.createClient(SB_URL, SB_KEY);
+
+var SIZE = 10;
+var SHIPS = [
+  {name:"נושאת מטוסים", len:5},
+  {name:"משחתת", len:4},
+  {name:"סיירת", len:3},
+  {name:"צוללת", len:3},
+  {name:"סירת טילים", len:2}
+];
+var COLS = "אבגדהוזחטי".split("");
+var CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+
+function $(id){ return document.getElementById(id); }
+var screens = ["scr-home","scr-lobby","scr-place","scr-battle","scr-end","scr-error"];
+function show(id){
+  for(var i=0;i<screens.length;i++){
+    $(screens[i]).classList.toggle("active", screens[i]===id);
+  }
+  window.scrollTo(0,0);
+}
+
+/* ---------- state ---------- */
+var ch = null, roomCode = "", isHost = false;
+var myName = "", oppName = "";
+var myKey = Math.random().toString(36).slice(2,10);
+var phase = "home"; // home | lobby | place | battle | end
+var myReady = false, oppReady = false;
+var myTurn = false, pendingShot = false;
+
+var myShips = [], myGrid = [], myShots = [];
+var sunkEnemy = [];   // names of enemy ships I sank
+var joinTimer = null;
+
+function freshGrid(v){
+  var g=[]; for(var r=0;r<SIZE;r++){ var row=[]; for(var c=0;c<SIZE;c++) row.push(v); g.push(row); } return g;
+}
+
+/* ---------- boards ---------- */
+function buildBoard(container, cellHandler, hoverHandler){
+  var t = document.createElement("table");
+  t.className = "board";
+  var head = t.insertRow();
+  head.appendChild(document.createElement("th"));
+  for(var c=0;c<SIZE;c++){
+    var th = document.createElement("th"); th.textContent = COLS[c]; head.appendChild(th);
+  }
+  for(var r=0;r<SIZE;r++){
+    var row = t.insertRow();
+    var rh = document.createElement("th"); rh.textContent = r+1; row.appendChild(rh);
+    for(var cc=0;cc<SIZE;cc++){
+      var td = row.insertCell();
+      td.className = "cell";
+      (function(r2,c2,td2){
+        if(cellHandler) td2.addEventListener("click", function(){ cellHandler(r2,c2); });
+        if(hoverHandler){
+          td2.addEventListener("mouseenter", function(){ hoverHandler(r2,c2,true); });
+          td2.addEventListener("mouseleave", function(){ hoverHandler(r2,c2,false); });
+        }
+      })(r,cc,td);
+    }
+  }
+  container.innerHTML = "";
+  container.appendChild(t);
+  return t;
+}
+function cellAt(table,r,c){ return table.rows[r+1].cells[c+1]; }
+function mark(table,r,c,cls){
+  var td = cellAt(table,r,c);
+  td.classList.remove("ship");
+  td.classList.add(cls,"noclick");
+}
+
+/* ---------- connection ---------- */
+function genCode(){
+  var s="";
+  for(var i=0;i<4;i++) s += CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)];
+  return s;
+}
+
+function connect(code, host){
+  roomCode = code; isHost = host; phase = "lobby";
+  ch = sb.channel("bs-"+code, {config:{broadcast:{self:false}, presence:{key:myKey}}});
+  ch.on("presence", {event:"sync"}, onPresence);
+  ch.on("broadcast", {event:"game"}, function(e){ onMsg(e.payload); });
+  ch.subscribe(function(status){
+    if(status==="SUBSCRIBED"){
+      ch.track({name: myName, role: host ? "h" : "g"});
+    }else if(status==="CHANNEL_ERROR" || status==="TIMED_OUT"){
+      fail("בעיית תקשורת", "לא הצלחנו להתחבר לשרת. בדקו את החיבור לאינטרנט ונסו שוב.");
+    }
+  });
+  if(host){
+    $("lobby-code").textContent = code;
+    show("scr-lobby");
+  }else{
+    show("scr-lobby");
+    $("lobby-code").textContent = code;
+    document.querySelector("#scr-lobby .waiting").textContent = "מתחבר לחדר…";
+    joinTimer = setTimeout(function(){
+      if(!oppName){
+        cleanup();
+        fail("החדר לא נמצא", "בדקו שהקוד נכון ושהחבר עדיין ממתין בחדר.");
+      }
+    }, 4000);
+  }
+}
+
+function onPresence(){
+  if(!ch) return;
+  var st = ch.presenceState();
+  var other = null, count = 0;
+  for(var k in st){
+    for(var i=0;i<st[k].length;i++){
+      count++;
+      if(k!==myKey) other = st[k][i];
+    }
+  }
+  if(!isHost && count>2){
+    cleanup();
+    fail("החדר מלא", "בחדר הזה כבר משחקים שני שחקנים.");
+    return;
+  }
+  if(other && phase==="lobby"){
+    oppName = other.name || "היריב";
+    if(joinTimer){ clearTimeout(joinTimer); joinTimer=null; }
+    startPlacement();
+  }
+  if(!other && (phase==="place" || phase==="battle")){
+    // grace period: a final win/lose message may still be in flight
+    var leftName = oppName;
+    setTimeout(function(){
+      if(phase==="place" || phase==="battle"){
+        fail("היריב התנתק", leftName + " עזב את המשחק.");
+      }
+    }, 1200);
+  }
+}
+
+function send(payload){
+  if(ch) return ch.send({type:"broadcast", event:"game", payload:payload});
+  return null;
+}
+
+function cleanup(){
+  if(joinTimer){ clearTimeout(joinTimer); joinTimer=null; }
+  if(ch){ sb.removeChannel(ch); ch = null; }
+}
+
+function fail(title, sub){
+  phase = "end";
+  $("err-title").textContent = title;
+  $("err-sub").textContent = sub;
+  show("scr-error");
+}
+
+/* ---------- home ---------- */
+function readName(){
+  myName = $("myname").value.trim();
+  if(!myName){
+    $("myname").focus();
+    $("myname").style.borderColor = "var(--hit)";
+    return false;
+  }
+  $("myname").style.borderColor = "";
+  return true;
+}
+$("btn-create").onclick = function(){
+  if(!readName()) return;
+  connect(genCode(), true);
+};
+$("btn-join").onclick = function(){
+  if(!readName()) return;
+  var code = $("joincode").value.trim().toUpperCase();
+  if(code.length!==4){ $("joincode").focus(); return; }
+  connect(code, false);
+};
+$("joincode").addEventListener("keydown", function(e){ if(e.key==="Enter") $("btn-join").click(); });
+
+$("btn-copylink").onclick = function(){
+  var link = location.origin + location.pathname + "?room=" + roomCode;
+  var btn = $("btn-copylink");
+  function done(ok){
+    btn.textContent = ok ? "✓ הקישור הועתק!" : link;
+    setTimeout(function(){ btn.textContent = "📋 העתק קישור הזמנה"; }, 2500);
+  }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(link).then(function(){ done(true); }, function(){ done(false); });
+  }else done(false);
+};
+
+/* prefill from invite link */
+(function(){
+  var m = location.search.match(/[?&]room=([A-Za-z0-9]{4})/);
+  if(m){
+    $("joincode").value = m[1].toUpperCase();
+    $("myname").focus();
+  }
+})();
+
+/* ---------- placement ---------- */
+var placeTable = null, placeIdx = 0, horizontal = true, lastHover = null;
+
+function startPlacement(){
+  phase = "place";
+  placeIdx = 0; horizontal = true; myReady = false; oppReady = false;
+  myShips = []; myGrid = freshGrid(null); myShots = freshGrid(0);
+  sunkEnemy = [];
+  $("place-title").textContent = "הצבת הצי — משחקים מול " + oppName;
+  $("btn-ready").disabled = true;
+  $("place-wait").style.display = "none";
+  $("place-btns").style.display = "";
+  updateRotateBtn();
+  placeTable = buildBoard($("place-board"), placeClick, placeHover);
+  renderChips();
+  show("scr-place");
+}
+
+function renderChips(){
+  var wrap = $("fleet-chips");
+  wrap.innerHTML = "";
+  for(var i=0;i<SHIPS.length;i++){
+    var chip = document.createElement("div");
+    chip.className = "fleetchip" + (i<placeIdx?" done": i===placeIdx?" current":"");
+    var sq = document.createElement("div"); sq.className="squares";
+    for(var k=0;k<SHIPS[i].len;k++){ var d=document.createElement("div"); d.className="sq"; sq.appendChild(d); }
+    chip.appendChild(sq);
+    var label = document.createElement("span"); label.textContent = SHIPS[i].name;
+    chip.appendChild(label);
+    wrap.appendChild(chip);
+  }
+}
+
+function shipCells(r,c,len,horiz){
+  var cells=[];
+  for(var k=0;k<len;k++){
+    var rr = horiz? r : r+k, cc2 = horiz? c+k : c;
+    if(rr>=SIZE||cc2>=SIZE) return null;
+    cells.push({r:rr,c:cc2});
+  }
+  return cells;
+}
+function canPlace(cells){
+  for(var i=0;i<cells.length;i++){
+    if(myGrid[cells[i].r][cells[i].c]!==null) return false;
+  }
+  return true;
+}
+
+function clearPreview(){
+  var els = placeTable.querySelectorAll(".preview-ok,.preview-bad");
+  for(var i=0;i<els.length;i++){ els[i].classList.remove("preview-ok","preview-bad"); }
+}
+function placeHover(r,c,entering){
+  if(myReady) return;
+  clearPreview();
+  if(!entering || placeIdx>=SHIPS.length) return;
+  lastHover = {r:r,c:c};
+  var cells = shipCells(r,c,SHIPS[placeIdx].len,horizontal);
+  var ok = cells && canPlace(cells);
+  if(cells){
+    for(var i=0;i<cells.length;i++){
+      cellAt(placeTable,cells[i].r,cells[i].c).classList.add(ok?"preview-ok":"preview-bad");
+    }
+  }else{
+    var len = SHIPS[placeIdx].len;
+    for(var k=0;k<len;k++){
+      var rr = horizontal? r : r+k, cc2 = horizontal? c+k : c;
+      if(rr<SIZE&&cc2<SIZE) cellAt(placeTable,rr,cc2).classList.add("preview-bad");
+    }
+  }
+}
+function placeClick(r,c){
+  if(myReady || placeIdx>=SHIPS.length) return;
+  var spec = SHIPS[placeIdx];
+  var cells = shipCells(r,c,spec.len,horizontal);
+  if(!cells || !canPlace(cells)) return;
+  var idx = myShips.length;
+  myShips.push({name:spec.name,len:spec.len,cells:cells,hits:{}});
+  for(var i=0;i<cells.length;i++){
+    myGrid[cells[i].r][cells[i].c]=idx;
+    cellAt(placeTable,cells[i].r,cells[i].c).classList.add("ship");
+  }
+  placeIdx++;
+  renderChips();
+  clearPreview();
+  if(lastHover) placeHover(lastHover.r,lastHover.c,true);
+  if(placeIdx>=SHIPS.length) $("btn-ready").disabled = false;
+}
+
+function updateRotateBtn(){
+  $("btn-rotate").textContent = horizontal ? "↻ סיבוב (אופקי)" : "↻ סיבוב (אנכי)";
+}
+$("btn-rotate").onclick = function(){
+  horizontal = !horizontal;
+  updateRotateBtn();
+  if(lastHover) placeHover(lastHover.r,lastHover.c,true);
+};
+document.addEventListener("keydown", function(e){
+  if((e.key==="r"||e.key==="R"||e.key==="ר") && $("scr-place").classList.contains("active") && !myReady){
+    horizontal=!horizontal; updateRotateBtn();
+    if(lastHover) placeHover(lastHover.r,lastHover.c,true);
+  }
+});
+
+function resetPlacement(){
+  placeIdx = 0;
+  myShips = []; myGrid = freshGrid(null);
+  placeTable = buildBoard($("place-board"), placeClick, placeHover);
+  renderChips();
+  $("btn-ready").disabled = true;
+}
+$("btn-clear").onclick = function(){ if(!myReady) resetPlacement(); };
+
+$("btn-random").onclick = function(){
+  if(myReady) return;
+  myShips = []; myGrid = freshGrid(null);
+  for(var s=0;s<SHIPS.length;s++){
+    var spec = SHIPS[s], placed=false, tries=0;
+    while(!placed && tries<500){
+      tries++;
+      var horiz = Math.random()<.5;
+      var r = Math.floor(Math.random()*SIZE), c = Math.floor(Math.random()*SIZE);
+      var cells = shipCells(r,c,spec.len,horiz);
+      if(cells && canPlace(cells)){
+        var idx=myShips.length;
+        myShips.push({name:spec.name,len:spec.len,cells:cells,hits:{}});
+        for(var i=0;i<cells.length;i++) myGrid[cells[i].r][cells[i].c]=idx;
+        placed=true;
+      }
+    }
+  }
+  placeIdx = SHIPS.length;
+  placeTable = buildBoard($("place-board"), placeClick, placeHover);
+  for(var s2=0;s2<myShips.length;s2++){
+    for(var i2=0;i2<myShips[s2].cells.length;i2++){
+      var cl = myShips[s2].cells[i2];
+      cellAt(placeTable,cl.r,cl.c).classList.add("ship");
+    }
+  }
+  renderChips();
+  $("btn-ready").disabled = false;
+}
+
+$("btn-ready").onclick = function(){
+  if(myShips.length!==SHIPS.length) return;
+  myReady = true;
+  send({t:"ready"});
+  $("place-btns").style.display = "none";
+  $("place-wait").style.display = "";
+  maybeStartBattle();
+};
+
+function maybeStartBattle(){
+  if(myReady && oppReady) startBattle();
+}
+
+/* ---------- battle ---------- */
+var radarTable=null, ownTable=null;
+
+function startBattle(){
+  phase = "battle";
+  myTurn = isHost;
+  pendingShot = false;
+  radarTable = buildBoard($("radar-board"), fireAt, null);
+  ownTable = buildBoard($("own-board"), null, null);
+  var own = ownTable.querySelectorAll("td.cell");
+  for(var i=0;i<own.length;i++) own[i].classList.add("noclick");
+  for(var s=0;s<myShips.length;s++){
+    for(var k=0;k<myShips[s].cells.length;k++){
+      var cl = myShips[s].cells[k];
+      cellAt(ownTable,cl.r,cl.c).classList.add("ship");
+    }
+  }
+  renderEnemyFleetStatus();
+  updateTurnUI("");
+  show("scr-battle");
+}
+
+function updateTurnUI(msgText, msgCls){
+  var tl = $("turn-label");
+  if(myTurn){
+    tl.textContent = "🎯 התור שלך — בחר משבצת במכ״ם";
+    tl.className = "turnname mine";
+  }else{
+    tl.textContent = "התור של " + oppName + "…";
+    tl.className = "turnname";
+  }
+  var m = $("battle-msg");
+  m.textContent = msgText || "";
+  m.className = "msg" + (msgCls ? " "+msgCls : "");
+}
+
+function renderEnemyFleetStatus(){
+  var wrap = $("enemy-fleet-status");
+  wrap.innerHTML = "";
+  var label = document.createElement("span");
+  label.textContent = "הצי של " + oppName + ":";
+  wrap.appendChild(label);
+  for(var i=0;i<SHIPS.length;i++){
+    var s = document.createElement("span");
+    s.textContent = SHIPS[i].name;
+    // count how many times this name was sunk vs how many ships share the name (names are unique here)
+    if(sunkEnemy.indexOf(SHIPS[i].name)!==-1) s.classList.add("sunk");
+    wrap.appendChild(s);
+  }
+}
+
+function fireAt(r,c){
+  if(phase!=="battle" || !myTurn || pendingShot) return;
+  if(myShots[r][c]!==0) return;
+  pendingShot = true;
+  send({t:"shot", r:r, c:c});
+}
+
+function onMsg(p){
+  if(!p || !p.t) return;
+  if(p.t==="ready"){
+    oppReady = true;
+    maybeStartBattle();
+    return;
+  }
+  if(p.t==="shot" && phase==="battle"){
+    handleIncomingShot(p.r, p.c);
+    return;
+  }
+  if(p.t==="res" && phase==="battle"){
+    handleShotResult(p);
+    return;
+  }
+}
+
+function handleIncomingShot(r,c){
+  var shipIdx = myGrid[r][c];
+  var res = {t:"res", r:r, c:c, hit:false, sunkName:null, sunkCells:null, lost:false};
+  if(shipIdx===null){
+    mark(ownTable,r,c,"miss");
+    myTurn = true;
+    updateTurnUI(oppName + " ירה והחטיא 💦", "good");
+  }else{
+    var sh = myShips[shipIdx];
+    sh.hits[r+"_"+c] = true;
+    mark(ownTable,r,c,"hit");
+    res.hit = true;
+    var hitCount = Object.keys(sh.hits).length;
+    if(hitCount===sh.len){
+      res.sunkName = sh.name;
+      res.sunkCells = sh.cells;
+      var allSunk = true;
+      for(var i=0;i<myShips.length;i++){
+        if(Object.keys(myShips[i].hits).length !== myShips[i].len){ allSunk=false; break; }
+      }
+      if(allSunk) res.lost = true;
+      updateTurnUI(oppName + " הטביע את ה" + sh.name + " שלך! 🔥", "bad");
+    }else{
+      updateTurnUI(oppName + " פגע בספינה שלך!", "bad");
+    }
+  }
+  var pr = send(res);
+  if(res.lost){
+    // make sure the final result reaches the winner before we tear down
+    var doneCalled = false;
+    var finish = function(){ if(!doneCalled){ doneCalled = true; endGame(false); } };
+    if(pr && pr.then){ pr.then(finish, finish); }
+    setTimeout(finish, 1000);
+  }
+}
+
+function handleShotResult(p){
+  pendingShot = false;
+  if(p.hit){
+    myShots[p.r][p.c] = 2;
+    mark(radarTable,p.r,p.c,"hit");
+    if(p.sunkName){
+      sunkEnemy.push(p.sunkName);
+      if(p.sunkCells){
+        for(var i=0;i<p.sunkCells.length;i++){
+          cellAt(radarTable,p.sunkCells[i].r,p.sunkCells[i].c).classList.add("sunkcell");
+        }
+      }
+      renderEnemyFleetStatus();
+      if(p.lost){ endGame(true); return; }
+      updateTurnUI("🔥 הטבעת את ה" + p.sunkName + "! יורים שוב.", "good");
+    }else{
+      updateTurnUI("🎯 פגיעה! יורים שוב.", "good");
+    }
+    myTurn = true;
+  }else{
+    myShots[p.r][p.c] = 1;
+    mark(radarTable,p.r,p.c,"miss");
+    myTurn = false;
+    updateTurnUI("💦 החטאה. התור עובר ל" + oppName + ".", "bad");
+  }
+}
+
+function endGame(won){
+  phase = "end";
+  setTimeout(cleanup, 1500);
+  $("end-emoji").textContent = won ? "🏆" : "💥";
+  $("end-title").textContent = won ? "ניצחת!" : oppName + " ניצח/ה";
+  $("end-sub").textContent = won ? "כל הצי של " + oppName + " הוטבע!" : "כל הצי שלך הוטבע. נקמה?";
+  show("scr-end");
+}
+
+$("btn-again").onclick = function(){ location.href = location.origin + location.pathname; };
+$("btn-err-home").onclick = function(){ location.href = location.origin + location.pathname; };
+
+window.addEventListener("beforeunload", function(){ cleanup(); });
+</script>
