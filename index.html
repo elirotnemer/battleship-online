@@ -1,6 +1,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>צוללות אונליין</title>
+<title>Battleship Online</title>
 <style>
   :root{
     --sea:#07131f;
@@ -24,8 +24,8 @@
       radial-gradient(1200px 600px at 50% -10%, #0e2a42 0%, transparent 60%),
       var(--sea);
     color:var(--text);
-    font-family:-apple-system,"Segoe UI",Roboto,"Heebo",Arial,sans-serif;
-    direction:rtl;
+    font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+    direction:ltr;
     min-height:100vh;
     display:flex;
     flex-direction:column;
@@ -63,7 +63,7 @@
   input[type=text]:focus{outline:2px solid var(--glow-dim);border-color:var(--glow-dim)}
   input.code{
     text-align:center;letter-spacing:.4em;font-size:22px;font-weight:700;
-    text-transform:uppercase;direction:ltr;
+    text-transform:uppercase;
   }
 
   button{
@@ -84,12 +84,11 @@
   .divider{display:flex;align-items:center;gap:12px;margin:20px 0;color:var(--sub);font-size:13px}
   .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--grid)}
 
-  /* lobby */
   .lobby{text-align:center}
   .roomcode{
     font-size:44px;font-weight:800;letter-spacing:.3em;color:var(--glow);
     text-shadow:0 0 20px rgba(55,200,232,.5);
-    direction:ltr;margin:14px 0 4px;font-variant-numeric:tabular-nums;
+    margin:14px 0 4px;font-variant-numeric:tabular-nums;
   }
   .waiting{color:var(--sub);margin-top:16px;font-size:15px}
   @media (prefers-reduced-motion: no-preference){
@@ -98,9 +97,8 @@
     .turnname.mine{animation:pulse 2.4s ease-in-out infinite}
   }
 
-  /* boards */
   .boardwrap{display:flex;flex-direction:column;align-items:center;gap:6px}
-  .boardtitle{font-size:13px;letter-spacing:.2em;color:var(--sub)}
+  .boardtitle{font-size:13px;letter-spacing:.2em;color:var(--sub);text-transform:uppercase}
   table.board{border-collapse:collapse;user-select:none}
   table.board td,table.board th{
     width:min(8.4vw,34px);height:min(8.4vw,34px);
@@ -149,7 +147,6 @@
   .fleetchip.current .sq{background:var(--glow)}
   .hint{color:var(--sub);font-size:13px;text-align:center;max-width:420px}
 
-  /* battle */
   .battle{display:flex;flex-direction:column;align-items:center;gap:18px;width:100%}
   .statusbar{font-size:16px;text-align:center}
   .turnname{font-weight:800;font-size:19px;color:var(--sub)}
@@ -167,93 +164,87 @@
   .endcard p{color:var(--sub);margin-bottom:24px}
 </style>
 
-<h1>צוללות אונליין</h1>
-<div class="tagline">BATTLESHIP · NAVAL COMMAND</div>
+<h1>BATTLESHIP</h1>
+<div class="tagline">NAVAL COMMAND · ONLINE</div>
 
-<!-- HOME -->
 <div class="screen active" id="scr-home">
   <div class="card">
-    <h2>שחקו עם חבר — כל אחד מהמכשיר שלו</h2>
-    <label for="myname">השם שלך</label>
-    <input type="text" id="myname" placeholder="איך קוראים לך?" maxlength="14">
+    <h2>Play with a friend — each on your own device</h2>
+    <label for="myname">Your name</label>
+    <input type="text" id="myname" placeholder="What's your name?" maxlength="14">
     <div class="btnrow">
-      <button id="btn-create">צור חדר חדש</button>
+      <button id="btn-create">Create a new room</button>
     </div>
-    <div class="divider">או הצטרפו לחדר קיים</div>
-    <label for="joincode">קוד חדר</label>
+    <div class="divider">or join an existing room</div>
+    <label for="joincode">Room code</label>
     <input type="text" id="joincode" class="code" placeholder="XXXX" maxlength="4" autocomplete="off">
     <div class="btnrow">
-      <button class="ghost" id="btn-join">הצטרף לחדר</button>
+      <button class="ghost" id="btn-join">Join room</button>
     </div>
   </div>
 </div>
 
-<!-- LOBBY -->
 <div class="screen" id="scr-lobby">
   <div class="card lobby">
-    <h2>החדר מוכן!</h2>
-    <p class="hint">שלחו לחבר את הקוד או את הקישור:</p>
+    <h2>Room ready!</h2>
+    <p class="hint">Send your friend the code or the link:</p>
     <div class="roomcode" id="lobby-code"></div>
     <div class="btnrow">
-      <button class="ghost" id="btn-copylink">📋 העתק קישור הזמנה</button>
+      <button class="ghost" id="btn-copylink">📋 Copy invite link</button>
     </div>
-    <div class="waiting">ממתין שהיריב יצטרף…</div>
+    <div class="waiting">Waiting for your opponent to join…</div>
   </div>
 </div>
 
-<!-- PLACEMENT -->
 <div class="screen" id="scr-place">
   <div class="placewrap">
-    <div class="turnname mine" id="place-title">הצבת הצי</div>
-    <div class="hint" id="place-hint">לחצו על הלוח כדי למקם את הספינה הנוכחית. «סיבוב» משנה כיוון.</div>
+    <div class="turnname mine" id="place-title">Place your fleet</div>
+    <div class="hint" id="place-hint">Click the board to place the current ship. "Rotate" changes its direction.</div>
     <div class="fleetlist" id="fleet-chips"></div>
     <div class="boardwrap"><div id="place-board"></div></div>
     <div class="btnrow" id="place-btns">
-      <button class="ghost" id="btn-rotate">↻ סיבוב (אופקי)</button>
-      <button class="ghost" id="btn-random">🎲 פיזור אקראי</button>
-      <button class="ghost" id="btn-clear">נקה לוח</button>
-      <button id="btn-ready" disabled>מוכן לקרב!</button>
+      <button class="ghost" id="btn-rotate">↻ Rotate (horizontal)</button>
+      <button class="ghost" id="btn-random">🎲 Random layout</button>
+      <button class="ghost" id="btn-clear">Clear board</button>
+      <button id="btn-ready" disabled>Ready for battle!</button>
     </div>
-    <div class="waiting" id="place-wait" style="display:none">ממתין שהיריב יסיים להציב…</div>
+    <div class="waiting" id="place-wait" style="display:none">Waiting for your opponent to finish placing…</div>
   </div>
 </div>
 
-<!-- BATTLE -->
 <div class="screen" id="scr-battle">
   <div class="battle">
     <div class="statusbar"><span class="turnname" id="turn-label"></span></div>
     <div class="msg" id="battle-msg"></div>
     <div class="grids">
       <div class="boardwrap">
-        <div class="boardtitle">מכ״ם תקיפה — לחצו כדי לירות</div>
+        <div class="boardtitle">Attack radar — click to fire</div>
         <div id="radar-board"></div>
         <div class="minifleet" id="enemy-fleet-status"></div>
       </div>
       <div class="boardwrap">
-        <div class="boardtitle">הצי שלך</div>
+        <div class="boardtitle">Your fleet</div>
         <div id="own-board"></div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- END -->
 <div class="screen" id="scr-end">
   <div class="card endcard">
     <div class="emoji" id="end-emoji"></div>
     <div class="who" id="end-title"></div>
     <p id="end-sub"></p>
-    <button id="btn-again">משחק חדש</button>
+    <button id="btn-again">New game</button>
   </div>
 </div>
 
-<!-- ERROR -->
 <div class="screen" id="scr-error">
   <div class="card endcard">
     <div class="emoji">⚓</div>
-    <div class="who" id="err-title">שגיאה</div>
+    <div class="who" id="err-title">Error</div>
     <p id="err-sub"></p>
-    <button id="btn-err-home">חזרה למסך הראשי</button>
+    <button id="btn-err-home">Back to home</button>
   </div>
 </div>
 
@@ -266,13 +257,13 @@ var sb = window.supabase.createClient(SB_URL, SB_KEY);
 
 var SIZE = 10;
 var SHIPS = [
-  {name:"נושאת מטוסים", len:5},
-  {name:"משחתת", len:4},
-  {name:"סיירת", len:3},
-  {name:"צוללת", len:3},
-  {name:"סירת טילים", len:2}
+  {name:"Carrier", len:5},
+  {name:"Battleship", len:4},
+  {name:"Cruiser", len:3},
+  {name:"Submarine", len:3},
+  {name:"Destroyer", len:2}
 ];
-var COLS = "אבגדהוזחטי".split("");
+var COLS = "ABCDEFGHIJ".split("");
 var CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 
 function $(id){ return document.getElementById(id); }
@@ -284,23 +275,21 @@ function show(id){
   window.scrollTo(0,0);
 }
 
-/* ---------- state ---------- */
 var ch = null, roomCode = "", isHost = false;
 var myName = "", oppName = "";
 var myKey = Math.random().toString(36).slice(2,10);
-var phase = "home"; // home | lobby | place | battle | end
+var phase = "home";
 var myReady = false, oppReady = false;
 var myTurn = false, pendingShot = false;
 
 var myShips = [], myGrid = [], myShots = [];
-var sunkEnemy = [];   // names of enemy ships I sank
+var sunkEnemy = [];
 var joinTimer = null;
 
 function freshGrid(v){
   var g=[]; for(var r=0;r<SIZE;r++){ var row=[]; for(var c=0;c<SIZE;c++) row.push(v); g.push(row); } return g;
 }
 
-/* ---------- boards ---------- */
 function buildBoard(container, cellHandler, hoverHandler){
   var t = document.createElement("table");
   t.className = "board";
@@ -335,7 +324,6 @@ function mark(table,r,c,cls){
   td.classList.add(cls,"noclick");
 }
 
-/* ---------- connection ---------- */
 function genCode(){
   var s="";
   for(var i=0;i<4;i++) s += CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)];
@@ -351,7 +339,7 @@ function connect(code, host){
     if(status==="SUBSCRIBED"){
       ch.track({name: myName, role: host ? "h" : "g"});
     }else if(status==="CHANNEL_ERROR" || status==="TIMED_OUT"){
-      fail("בעיית תקשורת", "לא הצלחנו להתחבר לשרת. בדקו את החיבור לאינטרנט ונסו שוב.");
+      fail("Connection problem", "Couldn't reach the server. Check your internet connection and try again.");
     }
   });
   if(host){
@@ -360,11 +348,11 @@ function connect(code, host){
   }else{
     show("scr-lobby");
     $("lobby-code").textContent = code;
-    document.querySelector("#scr-lobby .waiting").textContent = "מתחבר לחדר…";
+    document.querySelector("#scr-lobby .waiting").textContent = "Joining room…";
     joinTimer = setTimeout(function(){
       if(!oppName){
         cleanup();
-        fail("החדר לא נמצא", "בדקו שהקוד נכון ושהחבר עדיין ממתין בחדר.");
+        fail("Room not found", "Check that the code is correct and your friend is still waiting in the room.");
       }
     }, 4000);
   }
@@ -382,20 +370,19 @@ function onPresence(){
   }
   if(!isHost && count>2){
     cleanup();
-    fail("החדר מלא", "בחדר הזה כבר משחקים שני שחקנים.");
+    fail("Room is full", "Two players are already in this room.");
     return;
   }
   if(other && phase==="lobby"){
-    oppName = other.name || "היריב";
+    oppName = other.name || "Opponent";
     if(joinTimer){ clearTimeout(joinTimer); joinTimer=null; }
     startPlacement();
   }
   if(!other && (phase==="place" || phase==="battle")){
-    // grace period: a final win/lose message may still be in flight
     var leftName = oppName;
     setTimeout(function(){
       if(phase==="place" || phase==="battle"){
-        fail("היריב התנתק", leftName + " עזב את המשחק.");
+        fail("Opponent disconnected", leftName + " left the game.");
       }
     }, 1200);
   }
@@ -418,7 +405,6 @@ function fail(title, sub){
   show("scr-error");
 }
 
-/* ---------- home ---------- */
 function readName(){
   myName = $("myname").value.trim();
   if(!myName){
@@ -445,15 +431,14 @@ $("btn-copylink").onclick = function(){
   var link = location.origin + location.pathname + "?room=" + roomCode;
   var btn = $("btn-copylink");
   function done(ok){
-    btn.textContent = ok ? "✓ הקישור הועתק!" : link;
-    setTimeout(function(){ btn.textContent = "📋 העתק קישור הזמנה"; }, 2500);
+    btn.textContent = ok ? "✓ Link copied!" : link;
+    setTimeout(function(){ btn.textContent = "📋 Copy invite link"; }, 2500);
   }
   if(navigator.clipboard && navigator.clipboard.writeText){
     navigator.clipboard.writeText(link).then(function(){ done(true); }, function(){ done(false); });
   }else done(false);
 };
 
-/* prefill from invite link */
 (function(){
   var m = location.search.match(/[?&]room=([A-Za-z0-9]{4})/);
   if(m){
@@ -462,7 +447,6 @@ $("btn-copylink").onclick = function(){
   }
 })();
 
-/* ---------- placement ---------- */
 var placeTable = null, placeIdx = 0, horizontal = true, lastHover = null;
 
 function startPlacement(){
@@ -470,7 +454,7 @@ function startPlacement(){
   placeIdx = 0; horizontal = true; myReady = false; oppReady = false;
   myShips = []; myGrid = freshGrid(null); myShots = freshGrid(0);
   sunkEnemy = [];
-  $("place-title").textContent = "הצבת הצי — משחקים מול " + oppName;
+  $("place-title").textContent = "Place your fleet — playing against " + oppName;
   $("btn-ready").disabled = true;
   $("place-wait").style.display = "none";
   $("place-btns").style.display = "";
@@ -553,7 +537,7 @@ function placeClick(r,c){
 }
 
 function updateRotateBtn(){
-  $("btn-rotate").textContent = horizontal ? "↻ סיבוב (אופקי)" : "↻ סיבוב (אנכי)";
+  $("btn-rotate").textContent = horizontal ? "↻ Rotate (horizontal)" : "↻ Rotate (vertical)";
 }
 $("btn-rotate").onclick = function(){
   horizontal = !horizontal;
@@ -561,7 +545,7 @@ $("btn-rotate").onclick = function(){
   if(lastHover) placeHover(lastHover.r,lastHover.c,true);
 };
 document.addEventListener("keydown", function(e){
-  if((e.key==="r"||e.key==="R"||e.key==="ר") && $("scr-place").classList.contains("active") && !myReady){
+  if((e.key==="r"||e.key==="R") && $("scr-place").classList.contains("active") && !myReady){
     horizontal=!horizontal; updateRotateBtn();
     if(lastHover) placeHover(lastHover.r,lastHover.c,true);
   }
@@ -619,7 +603,6 @@ function maybeStartBattle(){
   if(myReady && oppReady) startBattle();
 }
 
-/* ---------- battle ---------- */
 var radarTable=null, ownTable=null;
 
 function startBattle(){
@@ -644,10 +627,10 @@ function startBattle(){
 function updateTurnUI(msgText, msgCls){
   var tl = $("turn-label");
   if(myTurn){
-    tl.textContent = "🎯 התור שלך — בחר משבצת במכ״ם";
+    tl.textContent = "🎯 Your turn — pick a square on the radar";
     tl.className = "turnname mine";
   }else{
-    tl.textContent = "התור של " + oppName + "…";
+    tl.textContent = oppName + "'s turn…";
     tl.className = "turnname";
   }
   var m = $("battle-msg");
@@ -659,12 +642,11 @@ function renderEnemyFleetStatus(){
   var wrap = $("enemy-fleet-status");
   wrap.innerHTML = "";
   var label = document.createElement("span");
-  label.textContent = "הצי של " + oppName + ":";
+  label.textContent = oppName + "'s fleet:";
   wrap.appendChild(label);
   for(var i=0;i<SHIPS.length;i++){
     var s = document.createElement("span");
     s.textContent = SHIPS[i].name;
-    // count how many times this name was sunk vs how many ships share the name (names are unique here)
     if(sunkEnemy.indexOf(SHIPS[i].name)!==-1) s.classList.add("sunk");
     wrap.appendChild(s);
   }
@@ -700,7 +682,7 @@ function handleIncomingShot(r,c){
   if(shipIdx===null){
     mark(ownTable,r,c,"miss");
     myTurn = true;
-    updateTurnUI(oppName + " ירה והחטיא 💦", "good");
+    updateTurnUI(oppName + " fired and missed 💦", "good");
   }else{
     var sh = myShips[shipIdx];
     sh.hits[r+"_"+c] = true;
@@ -715,14 +697,13 @@ function handleIncomingShot(r,c){
         if(Object.keys(myShips[i].hits).length !== myShips[i].len){ allSunk=false; break; }
       }
       if(allSunk) res.lost = true;
-      updateTurnUI(oppName + " הטביע את ה" + sh.name + " שלך! 🔥", "bad");
+      updateTurnUI(oppName + " sank your " + sh.name + "! 🔥", "bad");
     }else{
-      updateTurnUI(oppName + " פגע בספינה שלך!", "bad");
+      updateTurnUI(oppName + " hit one of your ships!", "bad");
     }
   }
   var pr = send(res);
   if(res.lost){
-    // make sure the final result reaches the winner before we tear down
     var doneCalled = false;
     var finish = function(){ if(!doneCalled){ doneCalled = true; endGame(false); } };
     if(pr && pr.then){ pr.then(finish, finish); }
@@ -744,16 +725,16 @@ function handleShotResult(p){
       }
       renderEnemyFleetStatus();
       if(p.lost){ endGame(true); return; }
-      updateTurnUI("🔥 הטבעת את ה" + p.sunkName + "! יורים שוב.", "good");
+      updateTurnUI("🔥 You sank the " + p.sunkName + "! Fire again.", "good");
     }else{
-      updateTurnUI("🎯 פגיעה! יורים שוב.", "good");
+      updateTurnUI("🎯 Hit! Fire again.", "good");
     }
     myTurn = true;
   }else{
     myShots[p.r][p.c] = 1;
     mark(radarTable,p.r,p.c,"miss");
     myTurn = false;
-    updateTurnUI("💦 החטאה. התור עובר ל" + oppName + ".", "bad");
+    updateTurnUI("💦 Miss. " + oppName + "'s turn.", "bad");
   }
 }
 
@@ -761,8 +742,8 @@ function endGame(won){
   phase = "end";
   setTimeout(cleanup, 1500);
   $("end-emoji").textContent = won ? "🏆" : "💥";
-  $("end-title").textContent = won ? "ניצחת!" : oppName + " ניצח/ה";
-  $("end-sub").textContent = won ? "כל הצי של " + oppName + " הוטבע!" : "כל הצי שלך הוטבע. נקמה?";
+  $("end-title").textContent = won ? "You win!" : oppName + " wins";
+  $("end-sub").textContent = won ? "You sank " + oppName + "'s entire fleet!" : "Your entire fleet was sunk. Rematch?";
   show("scr-end");
 }
 
